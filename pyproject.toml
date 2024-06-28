@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "auth_azure"
+version = "0.1.0"
+description = "App to connect Azure AD client users"
+authors = ["Yuri Motoshima <yuri.motoshima@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.13"
+taskipy = "^1.13.0"
+fastapi = "^0.111.0"
+msal = "^1.29.0"
+pydantic-settings = "^2.3.4"
+sqlalchemy-bigquery = "^1.11.0"
+
+
+[tool.poetry.group.dev.dependencies]
+isort = "^5.13.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+
+[tool.taskipy.tasks]
+test = 'pytest -s -x --cov=app -vv'
+post_test = 'coverage html'
+clear = "isort . && powershell -Command \"Get-ChildItem -Path . -Recurse -Directory -Filter '__pycache__' | Remove-Item -Recurse -Force\""
