@@ -1,9 +1,15 @@
-from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import JSONResponse, RedirectResponse
-
 import logging
+from typing import Annotated
+
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse, RedirectResponse
+from sqlalchemy.orm import Session
+
+from auth_azure import msal_app
 from auth_azure.config.settings import SETTINGS as Settings
-from auth_azure import msal_app, TokenStorage as token_storage
+from auth_azure.data.database import get_session
+from auth_azure.modules.token_manage import TokenStorage
 
 router = APIRouter(prefix='/auth', tags=['auth'])
 
@@ -19,7 +25,7 @@ async def login():
 
 
 @router.get("/redirect")
-async def authorized(request: Request):
+async def authorized(request: Request, session: Annotated[Session, Depends(get_session)]):
     code = request.query_params.get('code')
     if not code:
         logging.error("Código de autorização ausente")
@@ -28,10 +34,10 @@ async def authorized(request: Request):
     result = msal_app.acquire_token_by_authorization_code(code, scopes=Settings.SCOPE, redirect_uri=Settings.REDIRECT_URI)
 
     if 'access_token' in result:
+        storage_data = TokenStorage(token_info=result)
+        await storage_data.save_token(session)
+                
         token = result['access_token']
-        user_info = msal_app.acquire_token_silent_with_error(Settings.SCOPE, account=None)
-        user_id = user_info['id']
-        token_storage.save_token(user_id, token)  # Salva o token para o usuário específico
         redirect_url = f'{Settings.OUTSYSTEMS_REDIRECT_URI}?token={token}'
         return RedirectResponse(url=redirect_url)
     logging.error("Falha na autenticação")
@@ -51,16 +57,15 @@ async def logout(request: Request):
     token = request.query_params.get('token')
     if not token:
         raise HTTPException(status_code=400, detail="Token ausente")
-
+    
     user_id = token_storage.get_user_id_by_token(token)
     if not user_id:
         raise HTTPException(status_code=400, detail="Usuário não encontrado para o token fornecido")
 
     token_storage.delete_token(user_id)  # Remove o token específico do usuário
-    logout_url = f"https://login.microsoftonline.com/{Settings.TENANT_ID}/oauth2/v2.0/logout?post_logout_redirect_uri={Settings.POST_LOGOUT_REDIRECT_URI}"
+    logout_url = f"https://login.microsoftonline.com/{Settings.AZURE_SA['TENANT_ID']}/oauth2/v2.0/logout?post_logout_redirect_uri={Settings.POST_LOGOUT_REDIRECT_URI}"
     return RedirectResponse(url=logout_url)
 
 @router.get("/logged_out")
 async def logged_out(request: Request):
     return JSONResponse(content={"message": "Você saiu com sucesso."})
-

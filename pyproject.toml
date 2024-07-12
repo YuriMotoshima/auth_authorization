@@ -12,6 +12,7 @@ fastapi = "^0.111.0"
 msal = "^1.29.0"
 pydantic-settings = "^2.3.4"
 sqlalchemy-bigquery = "^1.11.0"
+google-cloud-bigquery = "^3.25.0"
 
 
 [tool.poetry.group.dev.dependencies]

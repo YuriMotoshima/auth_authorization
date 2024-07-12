@@ -1,7 +1,7 @@
-from datetime import date, datetime, UTC
-from sqlalchemy import Column, String, Integer, DateTime, JSON
+from datetime import UTC, datetime
+
+from sqlalchemy import JSON, MetaData
 from sqlalchemy.orm import Mapped, mapped_column, registry
-from sqlalchemy import MetaData
 
 from auth_azure.config.settings import SETTINGS as Settings
 from auth_azure.data.database import engine
@@ -13,7 +13,7 @@ table_registry = registry(metadata=metadata)
 class AuthStorage:
     __tablename__ = f'{Settings.GCP_DATABASE}.{Settings.GCP_TABLE_AUTH_STORAGE}'
     
-    id: Mapped[str] = mapped_column(unique=True, primary_key=True)
+    id: Mapped[str] = mapped_column(primary_key=True)
     token_type: Mapped[str]
     scope: Mapped[str]
     expires_in: Mapped[str]
@@ -27,16 +27,10 @@ class AuthStorage:
     id_token_claims: Mapped[JSON]
     token_source: Mapped[str]
     created_by: Mapped[str]
-    created_at: Mapped[datetime]
+    created_at: Mapped[datetime] = mapped_column(default=datetime.now(UTC), nullable=False)
     updated_by: Mapped[str]
-    updated_at: Mapped[datetime]
+    updated_at: Mapped[datetime] = mapped_column(default=datetime.now(UTC), onupdate=datetime.now(UTC), nullable=False)
 
 
 # table_registry.metadata.create_all(engine)
 # table_registry.metadata.drop_all(engine)
-
-
-# Execute apenas uma vez para criar as tabelas:
-async def init_models():
-    async with engine.begin() as conn:
-        await conn.run_sync(metadata.create_all)

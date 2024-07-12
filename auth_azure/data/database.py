@@ -1,17 +1,15 @@
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from google.cloud import bigquery
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from auth_azure.config.settings import SETTINGS
+from auth_azure.config.settings import SETTINGS as Settings
 
-settings = SETTINGS
-
-if settings.TESTS:
-    engine = create_async_engine(settings.DATABASE_URL, echo=True)
+if Settings.TESTS:
+    engine = create_async_engine(Settings.DATABASE_URL, echo=True)
+    AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 else:
-    engine = create_async_engine(f"bigquery+asyncio://{settings.GCP_PROJECT}", echo=True, credentials_info=settings.GCP_SA)
-
-AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    AsyncSessionLocal = bigquery.Client().from_service_account_info(Settings.GCP_SA)
 
 async def get_session():
     async with AsyncSessionLocal() as session:
-        yield session
+      yield session
